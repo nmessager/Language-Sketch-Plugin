@@ -1,4 +1,8 @@
-@import 'utils.js'
+@import 'utils.js';
+
+// let's get a hold on the Sketch API
+const sketch = require('sketch');
+
 function generateLanguageFile(doc){
 	var languageKeys = getLanguageKeys();
 	generateLanguageString(doc,languageKeys);
@@ -33,7 +37,7 @@ function localeStringFromTextLayers(textLayers, languageKeys) {
 
     for (var i = 0; i < textLayers.length; i++) {
         var textLayer = textLayers[i];
-        languageKey = unescape(textLayer.name());
+        languageKey = unescape(textLayer.name()).replace(/\s/g,'-');
 
 		var contentObject = {};
         for(var keyIndex = 0; keyIndex < languageKeys.length; keyIndex++) {
@@ -71,13 +75,13 @@ function addToFile(context, filePath){
 function getNewStringContent(currentJsonObject, keys, textLayers) {
 	for (var i = 0; i < textLayers.length; i++) {
         var textLayer = textLayers[i];
-        languageKey = unescape(textLayer.name());
+        languageKey = unescape(textLayer.name).replace(/\s/g,'-');
 
         if(!currentJsonObject[languageKey]){
         	var contentObject = {};
         	for(var keyIndex = 0; keyIndex < keys.length; keyIndex++) {
-        		var key = keys[keyIndex];
-				contentObject[key] = unescape(textLayer.stringValue());
+				var key = keys[keyIndex];
+				contentObject[key] = unescape(textLayer.value);
         	}
 
         	currentJsonObject[languageKey] = contentObject;
@@ -90,7 +94,6 @@ function getNewStringContent(currentJsonObject, keys, textLayers) {
 
 function generateAndAddToFile(context){
 	var languageKeys = getLanguageKeys();
-
 	var selections = context.selection;
 	if(selections.count() > 0){
 		var textLayers = getTextLayersOfSelections(selections);

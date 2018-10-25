@@ -1,4 +1,7 @@
 @import 'utils.js'
+
+var overrideId = 0;
+
 function translateFile(context, filePath){
 	var currentString = NSString.stringWithContentsOfFile_encoding_error(filePath, NSUTF8StringEncoding, null);
 	var currentJsonObject = JSON.parse(currentString.toString());
@@ -19,13 +22,14 @@ function translateFile(context, filePath){
     if ([languageDialog runModal] == NSAlertFirstButtonReturn) {
 		var keyIndex = [comboxBox indexOfSelectedItem];
 		var currentPage = context.document.currentPage();
-		translatePage(currentPage,currentJsonObject,keys[keyIndex]);
+		translateTextLayers(currentPage,currentJsonObject,keys[keyIndex]);
+		translateSymbolsOverrides(currentPage,currentJsonObject,keys[keyIndex]);
 		alert("Translate","Completed!");
 	}
 }
 
 
-function translatePage(page, jsonObject, languageKey){
+function translateTextLayers(page, jsonObject, languageKey){
  		var textLayers = getTextLayersOfPage(page);
 
         for (var i = 0; i < textLayers.length; i++) {
@@ -37,4 +41,62 @@ function translatePage(page, jsonObject, languageKey){
                 [textLayer adjustFrameToFit];
             }
         }
+
 }
+
+function translateSymbolsOverrides(page, jsonObject, languageKey) {
+    var layers = [page children];
+    stringOverrides = [];
+  
+    for (var i = 0; i < layers.count(); i++) {
+        var layer = [layers objectAtIndex: i];
+        if (isSymbol(layer) && isNeedTranslate(layer)) {
+            replaceStringOverridesInSymbols(layer, jsonObject, languageKey);
+        }
+    }
+}
+
+function replaceStringOverridesInSymbols(symbol, jsonObject, languageKey) {
+
+    overrideId = 0;
+
+    var existingOverrides = symbol.overrides() || NSDictionary.dictionary();
+    var overrides = NSMutableDictionary.dictionaryWithDictionary(existingOverrides);
+    var keys = overrides.allKeys();
+  
+    for (var i = 0; i < keys.count(); i++) {
+        var index = keys.objectAtIndex(i);
+        if(overrides[index].class().isSubclassOfClass_(NSMutableDictionary.class()) ) {
+            overrides[index] = replaceStringOverridesInSymbolsInception(overrides[index], jsonObject, languageKey, symbol);
+        } else if(overrides[index].class().isSubclassOfClass_(NSString.class()) ) {
+            var stringValue = unescape(symbol.name() + "_" + overrideId);
+            if(jsonObject[stringValue]){
+                var localeObject = jsonObject[stringValue];
+                overrides[index] = localeObject[languageKey];
+                overrideId++;
+            }
+        }
+    }
+    
+    symbol.overrides = overrides;
+  }
+  
+  function replaceStringOverridesInSymbolsInception(overrides, jsonObject, languageKey, symbol) {
+    var keys = overrides.allKeys();
+  
+    for (var i = 0; i < keys.count(); i++) {
+        var index = keys.objectAtIndex(i);
+        if(overrides[index].class().isSubclassOfClass_(NSMutableDictionary.class()) ) {
+            overrides[index] = replaceStringOverridesInSymbolsInception(overrides[index], jsonObject, languageKey, symbol);
+        } else if(overrides[index].class().isSubclassOfClass_(NSString.class()) ) {
+            var stringValue = symbol.name() + "_" + overrideId;
+            if(jsonObject[stringValue]){
+                var localeObject = jsonObject[stringValue];
+                overrides[index] = localeObject[languageKey];
+                overrideId++;
+            }
+        }
+    }
+  
+    return overrides;
+  }
